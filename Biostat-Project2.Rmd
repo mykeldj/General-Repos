@@ -1,0 +1,244 @@
+
+```{r}
+d1 <- read.csv(file = "http://faraway.neu.edu/data/assn2_dataset1.csv")
+```
+
+
+Problem 1
+---------
+### Question 1
+
+```{r}
+d1_2000 <- subset(d1, year == 2000)
+d1_2003 <- subset(d1, year == 2003)
+
+(uniq_specs <- unique(d1$speciesID, incomparables = FALSE))
+
+w_means<- matrix(nrow = length(uniq_specs), ncol = 2)
+
+for (i in 1:length(uniq_specs)) {
+  s1<-subset(d1, year == 2000 & speciesID == uniq_specs[i])
+  s2<-subset(d1, year == 2003 & speciesID == uniq_specs[i])
+  w_means[i,1] <- weighted.mean(x = s1$lat, w = s1$abundance)
+  w_means[i,2] <- weighted.mean(x = s2$lat, w = s2$abundance)
+  }
+
+```
+
+### Question 2
+
+```{r}
+w_difference <- (w_means[ ,1]) - (w_means[ ,2])
+
+migrate <- data.frame(speciesID = uniq_specs,
+                        migration = w_difference)
+
+locs<-!is.na(migrate$migration)
+
+migrate<-migrate[locs, ]
+
+northward <- subset(migrate, migration < 0)
+southward <- subset(migrate, migration > 0)
+
+```
+
+Latitude values increase as one moves North. The positive values of latitude differences between 2000 and 2003 would indicate that the species has traveled South, as the latitude value in 2000 will have been larger than the latitude value in 2003 resulting in a positive difference. The negative values of latitude differences between 2000 and 2003 would indicate that the species has traveled North, as the latitude value in 2000 will have been smaller than the latitude value in 2003 resulting in a negative difference.
+
+
+### Question 3
+
+```{r}
+
+bp4<-barplot(cbind(length(northward$migration), (length(southward$migration))), names=c("North", "South"), ylab="Number of Species", ylim=c(0,35), main="Intertidal Species Migration Between 2000 and 2003")
+box()
+
+
+
+```
+
+Based on this figure, there seems to be no evidence of a northward shift in the distribution of species. The figure indicates a minority of species shifting northward, with the majority of species shifting southward, and so suggest a slight shift Southward of intertidal species distribution.
+
+
+### Question 4
+
+```{r,}
+sucessess <- northward
+n_successes <- length(sucessess$migration)
+n_trials <- length(migrate$migration)
+binom.test(x = n_successes,n = n_trials, alternative = c("greater"), conf.level = 0.95 )
+```
+
+To test our hypothesis we performed a one-tailed sign test.
+Ho: There is no overall shift in the distribution of intertidal species.
+Ha: There is a northward shift in the distribution of intertidal species.
+
+The observed p-value of 0.7865 is larger than alpha = 0.05 and so we do not reject the null hypothesis and conclude that there is no northward shift in intertidal species distribution. The sign test indicated that the probability of northern migration is 0.456 which is close to the predicition of 0.5, consistent with the null hypothesis. 
+
+Problem 2
+---------
+### Question 1
+
+```{r}
+(uniq_development <- unique(d1$development, incomparables = FALSE))
+(uniq.dev<-uniq_development[2:4])
+
+north_TF<-numeric(length(migrate))
+north_TF<-ifelse(migrate$migration<0, TRUE, FALSE)
+
+
+develop<-unique(subset(d1, select=c("speciesID","development")))
+
+spec.mig<- data.frame(speciesID = migrate$speciesID, North = migrate$migration<0)
+
+spec.dev.mig<-merge(develop, spec.mig)
+
+
+```
+
+### Question 2
+
+```{r}
+
+dev.table<-table(subset(spec.dev.mig, select=c("development", "North")))
+
+(dev.table2<-dev.table[-1, ])
+
+bp<-barplot(dev.table2, beside=T, names = c("No North Migration", "North Migration"), ylim=c(0,16), ylab="Number of Species", col=c("blue", "darkgreen", "red"), axisnames = TRUE, cex.names = 1, legend.text = row.names(dev.table2), main="Migration of Intertidal Species between 2000 and 2003")
+box()
+
+```
+
+We expected that non-planktonic species would have the most number of species not migrating North, the planktonic and non-feeding species to have a moderate amount of northern migration, and the planktonic and feeding species to have the most number of species migrating North, due to the dispersal nature of the larvae. The pattern shown in the figure above are not consistent with our expectations. The figure suggest that more non-plaktonic species migrated North between 2000 and 2003 than did not migrate North. The figure indicates that more planktonic and non-feeding species did not migrate North than did migrate North. It is also observed that more planktonic and feeding species did not migrate north than those that did migrate north. We therefore hypothesize that dispersal is not related to the northward movement of intertidal species. 
+
+### Question 3
+
+To assess whether dispersal ability is related to northward migration we performed a Chi-Squared contingency analysis. A contingency analysis seeks to determine whether two or more categorical variables are inependent. In this case we used it to test whether developmental species type (dispersal) and Northward migration were independent. The assumptions of the test are that no more than 20% of classes have expected counts less that 5 and that no class has an expected count less than 1. 
+
+### Question 4
+
+```{r}
+
+chisq.test(dev.table2)
+
+```
+
+Ho = Dispersal ability and migration are independent.
+Ha = Dispersal ability and migration are not independent.
+
+The observed p-value = 0.5196 is larger than alpha = 0.05 and so we cannot reject the null and therefore conclude that dispersal ability and migration are independent. This is consistent with our prediction based on the figure in question (2), that dispersal is not related to the northward movement of intertidal species.
+
+Problem 3
+---------
+### Question 1
+
+```{r}
+
+d2 <- read.csv(file = "http://faraway.neu.edu/data/assn2_dataset2.csv")
+
+```
+
+We will use a Chi-Squared goodness of fit test to determine if the data is consistent with a Poisson distribution. The Poisson distribution describes the probability of a certain number of independent and equiprobable events occuring in a specific period of time or space. 
+
+### Question 2
+
+Ho = The data follow a Poisson distribution.
+Ha = The data are not consistent with a Poisson distribution and come from some other distribution.
+
+### Question 3
+
+The assumptions of the Chi-squared goodness of fit test are that no class has expected counts less than 1 and no more than 20% of classes have expected counts less than 5.
+
+### Question 4
+
+```{r}
+
+lambda<-weighted.mean(x=d2$migration.distance, w=d2$number.species)
+
+c<-1:6
+(poiss<-dpois(c, lambda = 1.05))
+
+df.poiss<-data.frame(observed=d2$number.species, expected=poiss*sum(d2$number.species))
+
+
+##combining class 4 through 6, as 5 and 6 were less than 1.
+df.poiss2<-df.poiss[1:4, ]
+df.poiss2[4, 1:2]<-df.poiss2[4, 1:2]+df.poiss[5,1:2]+df.poiss[6,1:2]
+
+chisq<-sum((df.poiss2$observed-df.poiss2$expected)^2/df.poiss2$expected)
+
+df<-(6-1-1)
+alpha<-0.05
+(crit<-(qchisq(alpha, df=df, lower.tail = FALSE)))
+
+pchisq(q=chisq, df=df, lower.tail = FALSE)
+
+```
+
+The observed test statistic X^2 = 42.28 is larger than the critical value X^2 = 9.49 and so we are able to reject the null at the alpha = 0.05 level and conclude that the data are not consistent with a Poisson distribution.
+
+### Question 5
+
+```{r}
+
+bp.poiss<-barplot(df.poiss2$observed, names=c(1:4), xlab="Class", ylab="Counts", ylim=c(0,35)) 
+points(bp.poiss, df.poiss2$expected, col="red")
+box()
+
+```
+
+The above figure suggests that species are able to escape from climate change as more species migrated farther than expected due to chance. More species migrated a mean of 1, 2, 3 or more kilometers annually than what is expected due to chance. 
+
+### Question 6
+
+```{r}
+d3 <- read.csv(file = "http://faraway.neu.edu/data/assn2_dataset3.csv")
+
+```
+
+To compare the mean migration distance of species on the East and West Coasts to the pace of the environmental change we will perform a one sample t-test. A one sample t-test is used to determine whether the population mean differs from a specific value defined by the null hypothesis. 
+
+The assumptions of the one sample t-test are that the variable is normally distributed and the sample is random.
+
+### Question 7
+
+Ho = The mean migration distance of East Coast and West Coast species are both equal to the rate of climate condition migration of 2.4 km/year
+Ha = The mean migration distance of East Coast and West Coast species differ from the rate of climate condition migration of 2.4 km/year
+
+### Question 8
+
+```{r}
+
+west<-subset(d3, coast=="West", select = c("migration"))
+east<-subset(d3, coast=="East", select = c("migration"))
+
+mean.west<-mean(west$migration)
+mean.east<-mean(east$migration)
+
+t.test(west$migration, mu=2.4)
+
+t.test(east$migration, mu=2.4)
+
+crit.hi<-qt(0.05/2, df=29, lower.tail = FALSE)
+
+```
+
+In comparing the migration distance of West coast species to the pace of environment using the one-sample t-test the observed p-value is 0.0443 which is lower than alpha=0.05 and so we reject the null and conclude that the mean migration distance differs from 2.4 km/year. In comparing the migration distance of East coast species to the pace of environment using the one-sample t-test the observed p-value is 0.6287 which is larger than alpha=0.05 and so we cannot reject the null and conclude that the mean migration distance does not differ from 2.4 km/year.
+
+### Question 9
+
+```{r}
+mean.mig<-aggregate(migration~coast, data=d3, FUN=mean)
+
+sderr.mig<-aggregate(migration~coast, data=d3, FUN= function(x) sd(x)/sqrt(length(x)))
+
+bp3<-barplot(mean.mig$migration, ylim=c(0,4), names=c("East", "West"), main="Mean Migration Rate", ylab="Migration Rate (km/year)")
+box()
+abline(h=2.4, lty=2, col="red")
+arrows(y0=mean.mig$migration-sderr.mig$migration, y1=mean.mig$migration+sderr.mig$migration, x0=bp3, x1=bp3, angle=90, code=3, length=0.1)
+
+
+
+
+```
+
+The mean East migration rate contains the migration rate of environmental change of 2.4 km/year within the 95% confidence interval. The mean West migration rate is larger than the migration rate of environmental change of 2.4 km/year within the 95% confidence interval. The plot indicates that the mean migration rate on the West coast is faster than both the mean migration rate of the East coast and the rate of environmental change of 2.4 km/year. 

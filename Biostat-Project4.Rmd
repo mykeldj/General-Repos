@@ -1,0 +1,290 @@
+
+
+```{r}
+benguela.upw <- read.csv("http://faraway.neu.edu/data/assn4_upwelling_benguela.csv")
+california.upw <- read.csv("http://faraway.neu.edu/data/assn4_upwelling_california.csv")
+canary.upw <- read.csv("http://faraway.neu.edu/data/assn4_upwelling_canary.csv")
+humboldt.upw <- read.csv("http://faraway.neu.edu/data/assn4_upwelling_humboldt.csv")
+
+benguela.tmp <- read.csv("http://faraway.neu.edu/data/assn4_temperature_benguela.csv")
+humboldt.tmp <- read.csv("http://faraway.neu.edu/data/assn4_temperature_humboldt.csv")
+canary.tmp <- read.csv("http://faraway.neu.edu/data/assn4_temperature_canary.csv")
+california.tmp <- read.csv("http://faraway.neu.edu/data/assn4_temperature_california.csv")
+```
+
+
+### Question 1
+
+```{r}
+##compute annual multimodel mean upwelling for each EBCS
+beng.upw<-rowMeans(benguela.upw[ ,1:22], na.rm=FALSE)
+cali.upw<-rowMeans(california.upw[ ,1:22], na.rm=FALSE)
+cana.upw<-rowMeans(canary.upw[ ,1:22], na.rm=FALSE)
+humb.upw<-rowMeans(humboldt.upw[ ,1:22], na.rm=FALSE)
+
+##compute annual multimodel mean temperature for each EBCS
+beng.tmp<-rowMeans(benguela.tmp[ ,1:22], na.rm=FALSE)
+cali.tmp<-rowMeans(california.tmp[ ,1:22], na.rm=FALSE)
+cana.tmp<-rowMeans(canary.tmp[ ,1:22], na.rm=FALSE)
+humb.tmp<-rowMeans(humboldt.tmp[ ,1:22], na.rm=FALSE)
+
+## create one data frame containing the year and annual temperature and upwelling means for each EBCS
+benguela2<-data.frame(subset(benguela.upw, select="year"), beng.upw)
+benguela3<-data.frame(subset(benguela.tmp, select="year"), beng.tmp)
+beng.upw.tmp<-merge(benguela2,benguela3)
+
+california2<-data.frame(subset(california.upw, select="year"), cali.upw)
+california3<-data.frame(subset(california.tmp, select="year"), cali.tmp)
+cali.upw.tmp<-merge(california2,california3)
+
+canary2<-data.frame(subset(canary.upw, select="year"), cana.upw)
+canary3<-data.frame(subset(canary.tmp, select="year"), cana.tmp)
+cana.upw.tmp<-merge(canary2,canary3)
+
+humboldt2<-data.frame(subset(humboldt.upw, select="year"), humb.upw)
+humboldt3<-data.frame(subset(humboldt.tmp, select="year"), humb.tmp)
+humb.upw.tmp<-merge(humboldt2,humboldt3)
+
+##renaming collumn names
+colnames(beng.upw.tmp)<-c("year", "upwelling", "temp")
+colnames(cali.upw.tmp)<-c("year", "upwelling", "temp")
+colnames(cana.upw.tmp)<-c("year", "upwelling", "temp")
+colnames(humb.upw.tmp)<-c("year", "upwelling", "temp")
+```
+
+### Question 2
+
+```{r}
+
+##add a column labeled system to each of the four data frames
+beng.upw.tmp$system <- c("Benguela")
+cali.upw.tmp$system <- c("California")
+cana.upw.tmp$system <- c("Canary")
+humb.upw.tmp$system <- c("Humboldt")
+
+##combine all 4 data frames into a single data frame
+df1 <- rbind(beng.upw.tmp, cali.upw.tmp, cana.upw.tmp, humb.upw.tmp)
+
+```
+
+### Question 3
+
+The proper analysis to asses whether upwelling changes over time is to perform 4 Simple regressions of Upwelling vs year for each EBCS.
+It will be used to describe the relationship between two numerical variables (Year and Upwelling). The coefficient of determination (R^2) is then used to indicate the variation in upwelling explained by year.
+
+### Question 4
+Assumptions of Simple Linear Regression:
+The relationship between the explanatory and response variable should be linear. The variance must be constant ad the residuals ust be normally distributed. The residuals must also be independent or not correlated. 
+
+```{r}
+
+## four simple regressions for each EBCS 
+lm.beng<-lm(formula=upwelling~year, data=beng.upw.tmp)
+(summary(lm.beng))
+
+lm.cali<-lm(formula=upwelling~year, data=cali.upw.tmp)
+(summary(lm.cali))
+
+lm.cana<-lm(formula=upwelling~year, data=cana.upw.tmp)
+(summary(lm.cana))
+
+lm.humb<-lm(formula=upwelling~year, data=humb.upw.tmp)
+(summary(lm.humb))
+
+
+##checking normality of upwelling (want points along the line)
+par(mfrow=c(2,2))
+qqnorm(lm.beng$residuals, main="Benguela")
+qqline(lm.beng$residuals, col="red")
+qqnorm(lm.cali$residuals, main="California")
+qqline(lm.cali$residuals, col="red")
+qqnorm(lm.cana$residuals, main="Canary")
+qqline(lm.cana$residuals, col="red")
+qqnorm(lm.humb$residuals, main="Humbodlt")
+qqline(lm.humb$residuals, col="red")
+
+
+## check linearity (lack of trend indicated linearity and constant spread of residuals across fitted values indicated homoscedasticity)
+par(mfrow=c(2,2))
+plot(lm.beng, which = 1, main="Benguela")
+plot(lm.cali, which = 1, main="California")
+plot(lm.cana, which = 1, main="Canary")
+plot(lm.humb, which = 1, main="Humboldt")
+
+
+## check independence due to correlation between residuals 
+res.beng<-lm.beng$residuals
+acf(res.beng, main="Beng ACF of residuals")
+res.cali<-lm.cali$residuals
+acf(res.cali, main="Cali ACF of Residuals")
+res.cana<-lm.cana$residuals
+acf(res.cana, main="Cana ACF of Residuals")
+res.humb<-lm.humb$residuals
+acf(res.humb, main="Humb ACF of Residuals")
+
+```
+
+All assumptions for a simple linear regression are met for EBCS according to the diagnostic tests and figures above.
+
+Normality: All residuals are normal for each EBCS.
+Independence: All residuals are mostly independent for each EBCS apart from a few outliers and so are not autocorrelated.
+Linearity: All residual plots show a lack of trend which inicates linearity for each EBCS
+Homoscedasticity: The residual plots show a constant spread of residuals across fitted values which indicates homoscedasticity for each EBCS
+
+### Question 5
+
+Plot the results for all four EBCS onto a single-paneled figure using different colors to represent each system (do not forget to add a legend). Use the figure to compare upwelling across systems
+```{r}
+df2<-data.frame(c(1950:2099))
+colnames(df2)<-c("year")
+
+pred.beng<-predict(lm.beng, newdata = df2, interval = "conf")
+pred.cali<-predict(lm.cali, newdata = df2, interval = "conf")
+pred.cana<-predict(lm.cana, newdata = df2, interval = "conf")
+pred.humb<-predict(lm.humb, newdata = df2, interval = "conf")
+
+plot(df2$year, pred.beng[,1], main = "Simple Regression of Upwelling", ylab="Upwelling", xlab="Year", type="n", ylim = c(0,1))
+lines(df2$year, pred.beng[,1], col="red",lwd=1)
+lines(df2$year, pred.beng[,2], col="red", lty="dashed")
+lines(df2$year, pred.beng[,3], col="red", lty="dashed")
+lines(df2$year, pred.cali[,1], col="blue",lwd=1)
+lines(df2$year, pred.cali[,2], col="blue", lty="dashed")
+lines(df2$year, pred.cali[,3], col="blue", lty="dashed")
+lines(df2$year, pred.cana[,1], col="green",lwd=1)
+lines(df2$year, pred.cana[,2], col="green", lty="dashed")
+lines(df2$year, pred.cana[,3], col="green", lty="dashed")
+lines(df2$year, pred.humb[,1], col="yellow",lwd=1)
+lines(df2$year, pred.humb[,2], col="yellow", lty="dashed")
+lines(df2$year, pred.humb[,3], col="yellow", lty="dashed")
+legend(legend=c("Benguela", "California", "Canary", "Humboldt"), x="bottomright", col=c("red", "blue", "green", "yellow"), pch = c(1))
+
+```
+
+The results from the linear regression are as follows:
+
+Benguela:
+R^2 = 0.8185 (some correlation), p<0.05 (slope significantly different from 0)
+
+California:
+R^2 = 0.1159 (not much correlation), p<0.05 (slope significantly different from 0)
+
+Canary:
+R^2 = 0.8246 (some correlation), p<0.05 (slope significantly different from 0)
+
+Humboldt: 
+R^2 = 0.846 (some correlation), p<0.05 (slope significantly different from 0)
+
+According to the figure above it seems that upwelling increases over time in all EBCS except for California, where it seems that there is no relationship between year and upwelling. 
+
+### Question 6
+
+Plot the slopes for each EBCS onto a single barplot. Add error bars to represent the 95% confidence intervals of the slopes. Based on the figure, can you determine (i) whether the slopes are statistically significant and (ii) which (if any) slopes differ?
+```{r}
+sl.beng<-coef(lm.beng)
+sl.cali<-coef(lm.cali)
+sl.cana<-coef(lm.cana)
+sl.humb<-coef(lm.humb)
+
+slopes<-data.frame(beng = sl.beng[1], cali = sl.cali[1], cana = sl.cana[1], humb = sl.humb[1])
+
+intvls<-data.frame(beng = confint(lm.beng), cali = confint(lm.cali), cana = confint(lm.cana), humb = confint(lm.humb))
+intervals<-intvls[-1, ]
+
+errors<- data.frame(beng = summary(lm.beng)$coefficients[,1], 
+                    cali = summary(lm.cali)$coefficients[,1], 
+                    cana = summary(lm.cana)$coefficients[,1], 
+                    humb = summary(lm.humb)$coefficients[,1])
+
+low <-  cbind(intervals[ ,1], intervals[ ,3], intervals[ ,5], intervals[ ,7])
+upper <- cbind(intervals[ ,2], intervals[ ,4], intervals[ ,6], intervals[ ,8])
+
+bp <- barplot(cbind(sl.beng[2], sl.cali[2], sl.cana[2], sl.humb[2]), 
+              names = c("Benguela", "California", "Canary", "Humboldt"),
+              ylim = c(0,0.002), 
+              main = "EBCS Slopes")
+arrows(y0 = low, y1=upper, x0=bp, x1=bp, angle=90, code=3, length=0.1)
+
+```
+
+
+Problem 2
+---------
+
+###Question 1
+
+To determine whether the relationship between upwelling and year is consistent across EBCS we will use the ANCOVA test. This is because we have a categorical explanatory variable (system), a numerical explanatory variable (year), and a single numerical response variable (upwelling).
+
+###Question 2
+
+First Hypothesis of ANCOVA
+Ho = there is no relationship between response and covariate (B = 0)
+Ha = there is a relationship between response and covariate (B not= 0)
+
+Second Hypothesis of ANCOVA
+Ho = there is no difference between adjusted means
+Ha = there is a difference between adjusted means
+
+Third Hypothesis of ANCOVA:
+Ho = there is no difference between slopes (Bi=Bj)
+Ha = there is a difference between slopes (Bi not= Bj)
+
+###Question 3
+
+Assumptions:
+- Narmality
+- Independence
+- Homoscedasticity
+- Homogeneity of slopes
+
+```{r}
+
+mod<-lm(upwelling ~ year*system, data=df1)
+#utilities
+anova(mod)
+summary(mod)
+
+## Residual plots to assess normality, independence, homoscedasticity and linearity
+par(mfrow=c(1,3))
+plot(mod, which=1)
+acf(mod$residuals)
+qqnorm(mod$residuals)
+qqline(mod$residuals, col="red")
+
+```
+
+All assumptions for ANCOVA are met by the data according to the diagnostic tests and figures above.
+
+Normality: Residuals are normally distributed.
+Independence: The residuals are mostly independent.
+Linearity: the residual plot shows a lack of trend which inicates linearity
+Homoscedasticity: The residual plot shows a constant spread of residuals across fitted values which indicates homoscedasticity 
+
+The R^2 value tells us that our model explains 98% of the variablity in Upwelling
+
+
+###Question 4
+Given these results, what would you conclude regarding the consistency of the effects of climate change across EBCS? 
+
+After analyzing the effect of both the continuous (year) and categorical (EBSC) covariates on the response variable (upwelling), we can conclude that, with an R-squared of 98%, there is a relationship between upwellings (response variable) and and years (continuous covariate). This shows us that as the climate increases, which we assume is correlated to an increase in years, the upwelling are consistantly increasing as the years go on. In conclusion we reject
+
+Problem 3
+---------
+
+###Question 1
+Describe the best approach for relating upwelling to the land-sea temperature di???erence in each system. Justify your answer based on the data available.
+
+###Question 2 
+For each system, perform the analysis, state the assumptions are verify that they are met 
+
+```{r}
+
+anova(mod)
+```
+
+###Question 3
+Based on the results of your analysis, determine whether there is any evidence for Bakun???s hypothesis. Justify your answer
+
+###Question 4
+How does the strength of the relationship between upwelling and land-sea temperature dif- ference vary across systems? Justify your answer.
+
+
